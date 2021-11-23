@@ -1,0 +1,301 @@
+ppgLaravel — бесплатный веб-фреймворк с открытым кодом, предназначенный для разработки с использованием архитектурной модели MVC
+
+Artisan — интерфейс командной строки, который поставляется с Laravel. Он содержит набор полезных команд, помогающих вам при разработке приложения. Для просмотра списка доступных команд используйте команду list: php artisan list
+
+composer careate-project --prefer-dist lafravel/laravel (название)
+composer careate-project --prefer-dist lafravel/laravel test
+php artisan serve  - запуск сервера (http://127.0.0.1:8000)
+php artisan route:list  - выволит список всех стр
+
+Middleware Web - та страница которую я открываю в браузере
+Route::get('uri', 'action') - Открываю страницу с помощью get запроса, он принимает uri и action 
+URI - адрес, ссылка на страницу
+
+Каталог Console содержит все ваши Artisan-команды, тогда как каталог Http содержит контроллеры, посредники и запросы.
+Каталог Http содержит ваши контроллеры, посредники и запросы форм. Практически вся логика обработки запросов, поступающих в ваше приложение, будет размещена в этом каталоге.
+Модели позволяют запрашивать данные в таблицах, а также вставлять новые записи в таблицу.
+
+
+Route::get('uri', 'action') -> внутри action создаю анонимную функцию: 
+function(){ 
+    return "Hello Wolrd";
+}
+
+<!----------------------Создание шаблона и страницы hello------------------------->
+Route::get('/hello', function(){
+	return "hello",  // Здесь указываю название шаблона или путь к шаблону
+	[
+	"name" => "Alish",  // массив, view-> $name == Alish который доступен как перменная в папке view
+	]
+})
+
+В папке views создаю новый файл, (hello.blade.php)
+Также можно создать отдеьную папку layuots/app.blade.php -> и внутри подговить шаблон основной и уже внутри hello.blde.php:
+@extends('layouts.app')  //  @extends('папка.название') 
+
+
+Иногда требуется зарегистрировать маршрут, отвечающий на несколько HTTP-методов. Вы можете сделать это с помощью метода match. Или вы даже можете зарегистрировать маршрут, отвечающий на все HTTP-методы, используя метод any:
+
+Route::match(['get', 'post'], '/', function () {
+    //
+});
+
+Route::any('/', function () {
+    //
+});
+
+<!----------------------Создание шаблона app.blade.php------------------------->
+Внутри-> app.blade.php можно создать контрольную точку для каждой страницы:
+<body>
+   @include('components.nav') // Создание компонента  @include('папка.название'), в корневой папке views создаю папку components 
+
+   <div class="container mt-5">
+   <h1>Hello my dear friend</h1>
+   @yield('content')
+   </div>
+</body>
+
+<!----------------------Создание копонент nav.blade.php------------------------->
+<nav>
+...
+</nav>
+
+<!----------------------Создание шаблона hello.blade.php------------------------->
+@extends('layouts.app') // Подключение
+
+@section('content')  // Контрольная точка
+<h2>This Page: Hello {{$name}} </h2> // {{ключ массива}}
+@endsection
+
+
+
+<!----------------------Создание контроллера------------------------->
+в терминале пишу:
+php artisan make:controller (название контроллера) // Создание контроллера
+php artisan make:controller PagesControllres 
+
+И подключение к нужному фaйлу:
+use App\Http\Controllres\название контроллера // Подключение контроллера к web.php
+use App\Http\Controllres\PagesController
+
+
+Route::get('/путь', [класс::class, "метод"])
+Route::get('/laravel', [PagesController::class, "page"]);  // Подключение контроллера к web.php
+
+{
+   public function page(){
+	return view('laravel', [
+	    "name"=> "Alish",     // Функция
+	])
+   }
+}
+
+<!----------------------Создание таблицы в базе данных------------------------->
+в терминале пишу:
+
+php artisan make:migration create_название_table
+php artisan make:migration create_laravel_table // Создание migrate
+php artisan migrate:refresh // Обновление migrate
+
+$tabel->тип('название', 'длина')-> nullable->unique()-> доп.параметры // Созлание таблиц (поля)
+$table->stirng('title', 250)->nullable->unique();
+
+php artisan migrate:rollback // Откат миграций
+php artisan migrate:status // Можно узнать статус
+php artisan migrate:reset //  Oткатит все миграции
+php artisan migrate:fresh // Yдалит все таблицы из базы данных, а затем выполнит команду migrate
+
+
+Проверка наличия таблицы / столбца:
+
+if (Schema::hasTable('users')) {
+    // Таблица `users` существует ...
+}
+
+if (Schema::hasColumn('users', 'email')) {
+    // Таблица `users` существует и содержит столбец `email` ...
+}
+
+
+Если таблица БД вашей модели не соответствует этому соглашению, вы можете вручную указать имя таблицы модели, определив свойство table в модели:
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Flight extends Model
+{
+    /**
+     * Таблица БД, ассоциированная с моделью.
+     *
+     * @var string
+     */
+    protected $table = 'my_flights';
+}
+
+
+<!----------------------Создание model------------------------->
+
+Название model должен в единственном числе!!!
+
+в терминале пишу:
+php artisan make:model Название // Создание модели
+php artisan make:model Todo 
+php artisan make:model Todo -m // Создание модели и миграции
+
+
+В папке где я создал controller могу добавить вручную запись:
+Для этого подключаю класс:
+
+use App\Models\название // Подключение
+use App\Models\Todo
+
+1)
+	{
+	   $todo = new Todo();
+	   $todo->title = "Прочитать книгу";
+	   $todo->note = "Начиная с 99 стр";
+	   $todo = $todo->save();
+	   dd($todo);
+	}
+
+2)      {
+           $todo = Todo::create([
+	      'title'=> "Прочитать книгу",
+	      'note'=> "Начиная с 99 стр",
+           ]);
+	}  
+	
+	$todos = Todo::all(); // Получение всех записей с таблицы
+
+	return viewe('todo', [
+	   "pageName" => "Todo page", // Отправка к файлу todo.blade.php
+	   "todos" => $todos,
+	]);	
+	
+        Дальше в папку с моделями пишу:
+	protected $fillable = ['title', 'note']; // Указываю поля
+
+	И в файле todo.blade.php вывожу:
+	
+	@foreach($todos as $todo)
+	   {{$todo->title}}
+	@endforeach
+
+	Редактирование записей:
+	$todo = Todo::find(1) // Ищет по id
+	if($todo){  // Если такая запись есть то:
+            $todo-> status = 1; // Присвоение навого значение
+	    $todo->save();
+	}
+
+	
+	Удаление:
+	$todoDelete = Todo::fint(7)
+	if($todoDelete){
+	   $todoDelte->delete();
+	}
+
+	Сортировка:
+	$todoNotDone = Todo::where('поле', 'значение')->get(); // Поиск по status
+
+	$todoNotDone = Todo::where('status', 0)->get();
+	return view('not-done', [
+	    'todoNotDone' => $todoNotDone;
+	]);
+
+3. Создание блога:
+
+Создаю model и migrate -> php artisan make:model Post -m
+Создаю стр в web.php -> Route::get('/post/{id}', [PageController::class, "postPage"]); // Передаю id
+Создаю метод в PageController:
+	
+	use: App\Models\Post; // Подкоючаю model
+	
+	public function postPage($id){    // id здесь доступен как аргумент
+	$post = Post::find($id); // Также ищу по id
+
+	if(!$post){            // Делаю проверку, если нету такой с id и стр 
+           return abort(404);  // то с помощью функции ABORT делаю рекдирект
+	}
+
+	return view(){
+	   "post"=> $post,
+	   "pagName"=> $post['title'],
+           }
+	}
+	
+
+Параметры маршрута всегда заключаются в фигурные скобки {} и должны состоять из буквенных символов. Подчеркивание (_) также допускается в именах параметров маршрута. Параметры маршрута будут внедрены в замыкания маршрута / контроллеры в зависимости от их порядка, т.е. имена аргументов замыкания маршрута / контроллера не имеют значения.
+
+
+
+4. Создание CASCSDE связи:
+
+Создаю model и migrate для post -> php artisan make:model Comment -m 
+Создаю таблицу-> {
+1.		   $table->id();
+		   $table->string('text', 200)->nullable();
+	           $table->unsignedBigInteger('post_id')->nullable();
+
+		   $table->foreign('post_id')->references('значение по которому буду искать')->on('таблица')->onDelete('cascade');
+		   $table->foreign('post_id')->references('id')->on('posts')->onDelete('cascade'); // Связь
+		   }
+
+2. Также моно так:
+		   Schema::table('posts', function (Blueprint $table) {
+                          $table->foreignId('user_id')
+                                ->constrained()
+                                ->onUpdate('cascade')
+                                ->onDelete('cascade');
+                   });
+
+
+В файле modele пишу:
+	public function comments(){
+           return $this->hasMany(Comment::class, 'article_id', 'id');
+        }
+	
+В стр:
+      @foreach($post_comments as $comment)
+
+
+
+
+5. Создание формы для добавлениe поста с помощью ajax:
+Создаю контроллер о форму:  
+  <form method="post" action="/post">  // В action указываю страницу и также создаю стр
+	@csrf // подпись для формы
+	<input name="title" placeholder="Title" type="text">
+	<textarea name="subtitle" placeholder="Subtitle" type="text"></textarea>
+
+  	<button type="submit">Add Post</button>
+  </form>
+
+Сооздание route для стр post:
+   
+   Route::post('/post', [PostsController::class, 'store']); // PageController не подойдет, потому что он get, а для добавление поста надо метод -> post
+
+   Пишу в терминале -> php artisan make:controller PostsController
+   И внутри controller создаю метод который будет добовлять посты:
+   
+   public function store(Request $request){ // надо для формы
+	$data = $request->only['title', 'subtitle'];   // Приравниваю к переменной и выбераю нужные мне поля
+	Не забываю указать в бд поля с которыми я работаю -> protected $fillable = ['title', 'subtitle'] // В файле migration
+
+	$post = Post::create([
+           "title" => $data['title'],
+           "subtitle" => $data['subtitle'],
+	]);
+        if($post){
+	  return redirect()->back(); // Редирект
+        } 
+
+   }
+   И подключаю в web.php -> use App\Http\Controllers\PostsController;
+    
+	 
+
+
+
+
+
