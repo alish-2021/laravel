@@ -1,4 +1,4 @@
-ppgLaravel — бесплатный веб-фреймворк с открытым кодом, предназначенный для разработки с использованием архитектурной модели MVC
+Laravel — бесплатный веб-фреймворк с открытым кодом, предназначенный для разработки с использованием архитектурной модели MVC
 
 Artisan — интерфейс командной строки, который поставляется с Laravel. Он содержит набор полезных команд, помогающих вам при разработке приложения. Для просмотра списка доступных команд используйте команду list: php artisan list
 
@@ -262,40 +262,513 @@ use App\Models\Todo
 
 
 5. Создание формы для добавлениe поста с помощью ajax:
-Создаю контроллер о форму:  
-  <form method="post" action="/post">  // В action указываю страницу и также создаю стр
-	@csrf // подпись для формы
-	<input name="title" placeholder="Title" type="text">
-	<textarea name="subtitle" placeholder="Subtitle" type="text"></textarea>
+Сперва я создаю route для отображение всех посто:
 
-  	<button type="submit">Add Post</button>
-  </form>
+<!----------POST PAGE(все посты)----------->
+use App\Http\Controllers\PagesController;
+Route::get('/posts', [PagesController::class, 'postsPage'])->name('post');
+@extends('layouts.app')
 
-Сооздание route для стр post:
-   
-   Route::post('/post', [PostsController::class, 'store']); // PageController не подойдет, потому что он get, а для добавление поста надо метод -> post
+@section('content')
+   @foreach ($posts as $post)
+      <div>
+         <a href="/lesson4/public/posts/{{ $post->id }}"><b>{{ $post->title }}</b></a>
+         <p>{{ $post->preview }}</p>
+         <a href="/lesson4/public/post/{{ $post->id }}/update">Update Post</a>
+         <form action="/lesson4/public/post/{{ $post->id }}/delete" method="POST">
+            @csrf
+            <input type="hidden" name="id" value="{{ $post->id }}">
+            <button type="submit">Delete</button>
+         </form>
+         <hr>
+      </div>
+   @endforeach
+@endsection
+	
+use App\Models\Post; 
+public function postPage(){
+   $posts = Post::all(); // Приравниваю
+   return view('posts', [
+      'pageTitle'=> "Post Page",
+      'posts'=> $posts;
+   ])
+}
 
-   Пишу в терминале -> php artisan make:controller PostsController
-   И внутри controller создаю метод который будет добовлять посты:
-   
-   public function store(Request $request){ // надо для формы
-	$data = $request->only['title', 'subtitle'];   // Приравниваю к переменной и выбераю нужные мне поля
-	Не забываю указать в бд поля с которыми я работаю -> protected $fillable = ['title', 'subtitle'] // В файле migration
+<!----------POST PAGE{id}(внут стр поста)----------->
+Route::get('/post/{id}', [PagesController::class, postPage]);
 
-	$post = Post::create([
-           "title" => $data['title'],
-           "subtitle" => $data['subtitle'],
-	]);
-        if($post){
-	  return redirect()->back(); // Редирект
-        } 
+@extends('layouts.app')
 
+@section('content') 
+   <div>
+      <p><b>{{ $post->title }}</b></p>
+      <p>{{ $post->preview }}</p> 
+      <hr>
+      @foreach ($post->commentaries as $commentary) // Сразу добавляю коменты для поста
+         <p>{{ $commentary->name }}</p>
+         <p>{{ $commentary->comment }}</p>
+      @endforeach
+   </div> 
+@endsection
+
+public function postPage($id){
+   $post = Post::find($id);
+   if(!$post){
+      return abort(404);
    }
-   И подключаю в web.php -> use App\Http\Controllers\PostsController;
-    
-	 
+   
+   return view('post' [
+      'pageTitle'=> $post->title,
+      'post'=> $post,
+   ]);
+}
+
+<!----------CREATE POST PAGE(создание поста)----------->
+use App\Http\Controllers\CreatePostsController;
+
+Route::get('/create', [PagesController::class, 'createPost'])->name('create'); // Сама стр с формой
+Route::post('/create/post', [CreatePostsController::class, 'getPost']); // Стр которя принимает значение с формы
+
+
+public function createPost(){ 
+   $posts = Post::all();
+      return view('create', [
+         'pageTitle'=> 'Create Page',
+         'posts'=> $posts,
+      ]);
+}
+
+CreatePostsController:
+use App\Models\Post;
+
+public function getPost(Request $request){ // Для POST запроса
+   $data = $request->only('title', 'preview');
+   $post = Post::create([            // Именно этот функцтонал отвечает за добавление!!!
+      'title'=> $data['title'],
+      'preview'=> $data['preview'],
+   ]);
+        
+   return redirect()->back();
+   return view('get', [
+     'pageTitle'=> 'Create Page',
+     'post'=> $post,
+   ]);
+}
+
+create.blade.php:
+
+<form action="create/post" method="post">
+   @csrf
+   <input type="text" name="title" placeholder="Title">
+   <br>
+   <textarea name="preview" type="text" placeholder="Text"></textarea>
+   <br><br>
+   <button type="submit">Create Post</button>
+</form>
+
+Также добаляю в App\Models\Post:
+protected $fillable = ['id','title', 'preview']; // Для добавление
+
+
+<!----------COMMENTARY CREATE PAGE(создание)----------->
+
+Route::post('/create/commentary', [CreatePostsController::class, 'getCommentary']);
+
+CreatePostsController:
+
+use App\Models\Commentary;
+public function getCommentary(Request $request){
+   $data = $request->only('name', 'comment', 'post_id');
+   $commentary = Commentary::create([
+      'name' => $data['name'],
+      'comment' => $data['comment'], 
+      'post_id' => $data['post_id'], 
+   ]);
+
+   return redirect()->route('posts');
+   return view('get', [
+      'pageTitle'=> "Crete Commetary Page",
+   ]);
+}
+
+
+create.blade.php:
+<form action="create/commentary" method="POST">
+   @csrf
+   <input type="text" name="name" placeholder="Commetary name">
+   <br>
+   <textarea name="comment" type="text" placeholder="Text"></textarea>
+   <br><br>
+   <select name="post_id">
+      <option>Выбор</option>
+      @foreach ($posts as $post)
+      <option value="{{ $post->id }}">{{ $post->title }}</option>
+      @endforeach
+   </select>
+   <br>
+   <button type="submit">Create Commentary</button>
+</form>
+
+
+post.blade.php(внут стр поста):
+@foreach ($post->commentaries as $commentary)
+   <p>{{ $commentary->name }}</p>
+   <p>{{ $commentary->comment }}</p>
+@endforeach
+
+commentaries_table.php(стр миграции):
+{
+Schema::create('commentaries', function (Blueprint $table) {
+    $table->id();
+    $table->string('name', 150)->nullable();
+    $table->string('comment', 250)->nullable()->unique();
+    $table->unsignedBigInteger('post_id')->nullable(); 
+    $table->timestamps();
+
+    $table->foreign('post_id')->references('id')->on('posts')->onDelete('cascade'); // Связи
+});
+}
+
+App\Models\Post:
+{
+    use HasFactory;
+    protected $fillable = ['id','title', 'preview'];
+
+    public function commentaries(){
+        return $this->hasMany(Commentary::class, 'post_id', 'id'); // Связи
+    }
+
+}
+
+<!----------UPDATE POST(редактирование)----------->
+
+Route::get('/post/{id}/update/', [PagesController::class, 'updatePage']);
+Route::post('/post/update', [CreatePostsController::class, 'update']);
+
+PagesController:
+public function updatePage($id){
+
+    $post = Post::find($id);
+
+    return view('update', [
+        'pageTitle' => $post['title'],
+        'post'=> $post,
+    ]);
+}
+
+CreatePostsController:
+public function update(Request $request){
+    $data = $request->only('title', 'preview', 'id');
+
+    $post = Post::find($data['id']);
+    $post->title = $data['title'];
+    $post->preview = $data['preview'];
+    $post->save();
+
+    return redirect()->route('posts');
+}
+
+update.blade.php:
+@extends('layouts.app')
+
+@section('content')
+   <form action="/lesson4/public/post/update" method="post">
+      @csrf
+      <input type="hidden" name="id" value="{{ $post->id }}">
+      <input type="text" name="title" value="{{ $post->title }}">
+      <br><br>
+      <textarea name="preview">{{ $post->preview }}</textarea>
+      <br>
+      <button type="submit">Update Post</button>
+   </form>
+@endsection
+
+<!----------DELETE POST(удаление)----------->
+
+Route::post('/post/{id}/delete', [CreatePostsController::class, 'delete']);
+
+CreatePostsController:
+public function delete(Request $request){
+    $data = $request->only('id');
+    $post = Post::find($data['id']);
+    $post->delete();
+
+    return redirect()->route('posts');
+}
+posts.blade.php:
+@extends('layouts.app')
+
+@section('content')
+   @foreach ($posts as $post)
+      <div>
+         <a href="/lesson4/public/posts/{{ $post->id }}"><b>{{ $post->title }}</b></a>
+         <p>{{ $post->preview }}</p>
+         <a href="/lesson4/public/post/{{ $post->id }}/update">Update Post</a>
+         <form action="/lesson4/public/post/{{ $post->id }}/delete" method="POST">
+            @csrf
+            <input type="hidden" name="id" value="{{ $post->id }}">
+            <button type="submit">Delete</button>
+         </form>
+         <hr>
+      </div>
+   @endforeach
+@endsection
+
+
+
+7. Аутендификация:
+
+composer require laravel/ui
+php artisan ui vue --auth // Создание стр
+npm install && npm run dev
+
+После этого я могу переделать register.blade.php, например добавить еще одну полу login:
+
+<div class="form-group row">
+    <label for="login" class="col-md-4 col-form-label text-md-right">{{ __('Login') }}</label>
+
+    <div class="col-md-6">
+        <input id="login" type="text" class="form-control @error('login') is-invalid @enderror" name="login" value="{{ old('login') }}" required autocomplete="login" autofocus>
+
+        @error('login')
+            <span class="invalid-feedback" role="alert">
+                <strong>{{ $message }}</strong>
+            </span>
+        @enderror
+    </div>
+</div>
+
+Также в файле RregisterController.php:
+return Validator::make($data, [
+    'name' => ['required', 'string', 'max:255'],
+    'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+    'password' => ['required', 'string', 'min:8', 'confirmed'],
+    'login' => ['required', 'string', 'max:100'], // Добавляю
+]);
+
+return User::create([
+    'name' => $data['name'],
+    'email' => $data['email'],
+    'password' => Hash::make($data['password']),
+    'login' => $data['login'],
+]);
+
+И файле App\Models\Auth:
+protected $fillable = [
+    'name',
+    'email',
+    'password',
+    'login',
+];
+
+php artisan migrate:refresh
+
+Для того чтобы использовать другой шаблон для авторизации и регистрации я могу переопределить в controller, скопировав функцию с vendor/laravel/ui/..
+
+Например для того чтобы регистрация (вход) была с помощью логин, то я ф LoginController.php:
+public function username{
+   return 'login';
+}
+
+Я могу создать стр которая будет доступна только у автаризованных пользователей, для этого я создаю как обычно controller и route:
+
+Route::get('/login', [PageController::class, 'loginPAge'])->name('login')->middleware('auth');
+
+Для отображение данных у пользователей:
+
+{{ Auth::user()}} // Массив
+
+@auth // Отображает только для пользователей у которх есть автаризация
+   <p>Secret Text</p>
+@endauth
+
+
+Что бы полсе автаризации нас переадрессавала на другую стр, в файле -> app/Providers/RouteServiceProvider.php
+
+public const HOME = '/home'; Менеям на -> public const HOME '/admin';
+
+
+8. Пасредники:
+
+Middleware - это пасредник
+
+В файл database/miration/user_table.php добавляю полю group:
+$table->unsignedInteger('group')->default(1); // 1 -user; 2 - admin
+
+И php artisan migrate:refresh
+
+Для того чтобы admin стр была доступна только у пользователя group = 2(только для админа), я создаю middleware:
+php artisan make:middleware AdminMiddleware 
+
+Дальше перехожу на стр app/Http/Middleware/AdminMiddleware:
+
+Также не забываю добавить facedes-> use Illuminate\Support\Facades\Auth;
+
+class AdminMiddleware
+{
+    public function handle(Request $request, Closure $next)
+    {
+
+        if(Auth::user()->group != 2){ // Проверяю если группа пользователей на равен то делаю редирект
+            return abort(403);
+        }
+
+        return $next($request);
+    }
+}
+
+И в файле app/Http/Models/User.php добавляю полю group:
+
+protected $fillable = [
+   ...
+   'gruop',
+];
+
+Дальше в файле app/Http/Kernel.php:
+
+protected $routeMiddleware = [
+   'название' => \App\Http\Middleware\назваие посредика которого я создал с помощью php artisan::class,
+   'admin' => \App\Http\MiddleWare\AdminMiddleWare::class,
+];  -> И теперь пасредник (admin) мне доступен на стр web.php
+
+ 
+
+Route::get('/admin', [PageController::class, 'admin'])->name('admin')->middleware(['admin', 'auth']) // вывожу
 
 
 
 
 
+<!====================Лайф хак==========================>
+
+composer install --ignore-platform-reqs
+
+1. Для создание стр
+Route::get('/articles', [ArtcileController, 'index'])->name('aticle.index');
+Route::get('/articles/{id}', [ArtcileController, 'show'])->name('aticle.show');
+Route::get('/articles/create', [ArtcileController, 'create'])->name('aticle.create');
+Route::post('/articles', [ArtcileController, 'store'])->name('aticle.store');
+Route::get('/articles/{id}/edit', [ArtcileController, 'edit'])->name('aticle.edit');
+Route::put('/articles', [ArtcileController, 'update'])->name('aticle.update');
+Route::delete('/articles/delete', [ArtcileController, 'destroy'])->name('aticle.destroy');
+
+php artisan make:controller PhotoController --resource --model=Photo // Controller & Model & DataBase
+
+Все это равно = Route::resource('articles', ArticleController::class);
+
+php artisan make:controller ArticleController --resource //  И все controller автоматом добавиться
+ 
+Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function(){
+   Route::resource('panel', PanelController::class);
+}); или
+
+Route::middleware(['role:admin'])->prefix('admin')->group(function(){
+   Route::get('/', [AdminController::class, 'index']);
+})
+
+
+2. Для формы:
+<form method="POST" action="{{route (articles.store)}}">
+
+3. Для store(создание поста) можно в методе сделать валидацию:
+
+public function store(Request $request){
+   $data = $request->all();
+
+   $data = $request->validate([
+   'title' => ['required', 'string', 'max:100'],
+   'description' => ['nullable', 'string', 'max:300']
+   ]);
+   
+    $article = Article::create($data); // Создание
+
+}
+
+4. Сообщение для ошибок:
+
+Если форма пустая:
+<input name="title" placeholder="Title"  type="text">
+@error('name')
+   {{ $message }} // Сообщение
+@enderror
+
+5. Создание title:
+
+<title>@yeld('title')</title>
+@section('title', 'Заголвок страницы') // Вывод на странице
+
+6. Для переди данных:(controller)
+
+$articles = Article::latest()->paginate(2);
+return view('article', compact( 'article'))
+
+Вывод(article):
+@if($articles->isEmpty())
+   <p>Нет ни одной записи</p>
+@else
+   @foreach($articles as $article)
+      <p class="title">{{$article->title}}</p>
+   @endforeach
+
+  {{$articles->links()}} // пагинация
+@endif
+
+
+7. Редирект:
+Route::redirect('откуда', 'куда', 301);
+Route::redirect('/', '/home', 301);
+
+Route::resource('photos', PhotoController::class)
+        ->missing(function (Request $request) { // Если не найдет стр
+            return Redirect::route('photos.index');
+        });
+
+8. laravel-permission
+
+composer require spatie/laravel-permission
+
+Дальше в папке config/app.php:
+Spatie\Permission\PermissionServiceProvider::class,
+
+php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
+php artisan config:clear
+php artisan migrate:refresh
+
+php artisan permission:create-role admin // создание админского роля
+
+В файле app\Moldels\User.php:
+use HasRolres // добавить 
+use Spatie\Permission\Traits\HasRoles;
+
+
+app/Http/controllers/RegisterController.php:
+
+    protected function create(array $data)
+    {
+        $user = User::create([
+            'name' => $data['name'],
+            'login' => $data['login'],
+            'password' => Hash::make($data['password']),
+        ]);
+        $user->assignRole('user');
+        
+        return $user;
+    }
+
+app/Http/Kernel.php:
+protected $routeMiddleware = [
+    // ...
+    'role' => \Spatie\Permission\Middlewares\RoleMiddleware::class,
+    'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
+    'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
+];
+
+
+Медиа Файлы:
+composer require barryvdh/laravel-elfinder
+ 
+В файле app/config/app.php: (providers)
+Barryvdh\Elfinder\ElfinderServiceProvider::class,
+
+php artisan elfinder:publish
+php artisan vendor:publish --provider='Barryvdh\Elfinder\ElfinderServiceProvider' --tag=config
